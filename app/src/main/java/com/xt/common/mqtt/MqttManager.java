@@ -23,10 +23,10 @@ class MqttManager {
 
     private static MqttManager mMqttManager;
 
-    private              String mServerURI;
-    private              String mClientId;
-    private              String mUserName;
-    private              String mPassword;
+    private String mServerURI;
+    private String mClientId;
+    private String mUserName;
+    private String mPassword;
 
     private MqttClient mqttClient;
 
@@ -70,7 +70,7 @@ class MqttManager {
                 @Override
                 public void messageArrived(String topic, MqttMessage message) throws Exception {
                     Charset charset = Charset.forName("UTF-8");
-                    String  msg     = new String(message.getPayload(), charset);
+                    String msg = new String(message.getPayload(), charset);
                     for (IMqttCallback mqttCallback : mMqttCallbackList) {
                         mqttCallback.messageArrived(topic, msg);
                     }
@@ -171,11 +171,13 @@ class MqttManager {
         for (int i = 0; i < qos.length; i++) {
             qos[i] = 1;
         }
-        try {
-            mqttClient.subscribe(topicFilters, qos);
-        } catch (Exception e) {
-            e.printStackTrace();
-            onConnectLost(e);
+        if (isConnected()) {
+            try {
+                mqttClient.subscribe(topicFilters, qos);
+            } catch (Exception e) {
+                e.printStackTrace();
+                onConnectLost(e);
+            }
         }
     }
 
