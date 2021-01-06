@@ -11,6 +11,7 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+import org.jetbrains.annotations.NotNull;
 
 import java.nio.charset.Charset;
 import java.util.ArrayList;
@@ -31,8 +32,8 @@ public class MqttManager {
 
     private MqttClient mqttClient;
 
-    private List<IMqttCallback> mMqttCallbackList = new ArrayList<>();
-    private MqttCallback mqttCallback = new MqttCallback() {
+    private MyMqttCallback myMqttCallback;
+    private MqttCallback innerMqttCallback = new MqttCallback() {
         @Override
         public void connectionLost(Throwable cause) {
 
@@ -42,9 +43,11 @@ public class MqttManager {
         public void messageArrived(String topic, MqttMessage message) throws Exception {
             Charset charset = Charset.forName("UTF-8");
             String msg = new String(message.getPayload(), charset);
-            for (IMqttCallback mqttCallback : mMqttCallbackList) {
-                mqttCallback.messageArrived(topic, msg);
+
+            if (myMqttCallback == null) {
+                return;
             }
+            myMqttCallback.messageArrived(topic,msg);
         }
 
         @Override
@@ -105,7 +108,7 @@ public class MqttManager {
 
         try {
             mqttClient = new MqttClient(mServerURI, mClientId, new MemoryPersistence());
-            mqttClient.setCallback(mqttCallback);
+            mqttClient.setCallback(innerMqttCallback);
             IMqttToken iMqttToken = mqttClient.connectWithResult(connOpts);
             if (iMqttToken.isComplete()) {
                 return true;
@@ -172,9 +175,19 @@ public class MqttManager {
     }
 
     //取消订阅到服务器
-    public void mqttUnsubscribe(String subscribeTopic) {
+    public void mqttUnsubscribe(String topicFilter) {
         try {
-            mqttClient.unsubscribe(subscribeTopic);
+            mqttClient.unsubscribe(topicFilter);
+        } catch (MqttException e) {
+            e.printStackTrace();
+            onConnectLost(e);
+        }
+    }
+
+    //取消订阅到服务器
+    public void mqttUnsubscribe(String[] topicFilters) {
+        try {
+            mqttClient.unsubscribe(topicFilters);
         } catch (MqttException e) {
             e.printStackTrace();
             onConnectLost(e);
@@ -251,16 +264,11 @@ public class MqttManager {
 
     }
 
-
-    interface IMqttCallback {
+    public interface MyMqttCallback{
         void messageArrived(String topic, String message);
     }
 
-    public void addMqttCallback(IMqttCallback mqttCallback) {
-        mMqttCallbackList.add(mqttCallback);
-    }
-
-    public void removeMqttCallback(IMqttCallback mqttCallback) {
-        mMqttCallbackList.remove(mqttCallback);
+    public void setMyMqttCallback(MyMqttCallback myMqttCallback) {
+        this.myMqttCallback = myMqttCallback;
     }
 }
