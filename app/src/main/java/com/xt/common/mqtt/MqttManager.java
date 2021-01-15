@@ -3,6 +3,8 @@ package com.xt.common.mqtt;
 import android.os.Handler;
 import android.text.TextUtils;
 
+import com.blankj.utilcode.util.ConvertUtils;
+
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.IMqttToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -196,6 +198,14 @@ public class MqttManager {
 
     //发布到服务器
     public void mqttPublish(String publishTopic, String messageStr) {
+        mqttPublish(publishTopic,messageStr.getBytes());
+    }
+    //发布到服务器
+    public void mqttPublishHex(String publishTopic, String strHex) {
+        mqttPublish(publishTopic, ConvertUtils.hexString2Bytes(strHex));
+    }
+    //发布到服务器
+    public void mqttPublish(String publishTopic, byte[] data) {
         if (mqttClient == null) {
             return;
         }
@@ -204,7 +214,7 @@ public class MqttManager {
         }
 
 //        AppLogUtil.d(TAG, "mqtt发送json---------------->" + json);
-        MqttMessage message = new MqttMessage(messageStr.getBytes());
+        MqttMessage message = new MqttMessage(data);
         message.setQos(1);
         try {
             mqttClient.publish(publishTopic, message);
