@@ -1,6 +1,5 @@
 package com.xt.common.mqtt;
 
-import android.os.Handler;
 import android.text.TextUtils;
 
 import com.blankj.utilcode.util.ConvertUtils;
@@ -15,9 +14,7 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
 import org.jetbrains.annotations.NotNull;
 
-import java.nio.charset.Charset;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 /**
  * @author xt on 2020/9/1 10:37
@@ -43,13 +40,10 @@ public class MqttManager {
 
         @Override
         public void messageArrived(String topic, MqttMessage message) throws Exception {
-            Charset charset = Charset.forName("UTF-8");
-            String msg = new String(message.getPayload(), charset);
-
             if (myMqttCallback == null) {
                 return;
             }
-            myMqttCallback.messageArrived(topic,msg);
+            myMqttCallback.messageArrived(topic, message.getPayload());
         }
 
         @Override
@@ -70,7 +64,7 @@ public class MqttManager {
     public boolean connectMqtt(String ipAddress, String port, String clientId, String userName, String password) {
         if (isConnected()) {
             if (isParamsEqual(ipAddress, port, clientId, userName, password)) {
-                return true;
+                return false;
             }
             close();
         }
@@ -83,9 +77,9 @@ public class MqttManager {
     }
 
     //连接到到服务器,退出应用前未断开mqtt连接，下次进来时，mqttClient状态为未连接，调用连接的方法时会连接失败，应该是应用上次和服务器的连接还在，退出应用是否要断开
-    public boolean connectMqtt() {
+    private boolean connectMqtt() {
         if (isConnected()) {
-            return true;
+            return false;
         }
 
         if (TextUtils.isEmpty(mServerURI)) {
@@ -163,9 +157,7 @@ public class MqttManager {
             return;
         }
         int[] qos = new int[topicFilters.length];
-        for (int i = 0; i < qos.length; i++) {
-            qos[i] = 1;
-        }
+        Arrays.fill(qos, 1);
         if (isConnected()) {
             try {
                 mqttClient.subscribe(topicFilters, qos);
@@ -198,14 +190,26 @@ public class MqttManager {
 
     //发布到服务器
     public void mqttPublish(String publishTopic, String messageStr) {
-        mqttPublish(publishTopic,messageStr.getBytes());
+        if (messageStr == null) {
+            return;
+        }
+        mqttPublish(publishTopic, messageStr.getBytes());
     }
+
     //发布到服务器
     public void mqttPublishHex(String publishTopic, String strHex) {
+        if (strHex == null) {
+            return;
+        }
         mqttPublish(publishTopic, ConvertUtils.hexString2Bytes(strHex));
     }
+
     //发布到服务器
     public void mqttPublish(String publishTopic, byte[] data) {
+        if (data == null) {
+            return;
+        }
+
         if (mqttClient == null) {
             return;
         }
@@ -213,7 +217,6 @@ public class MqttManager {
             return;
         }
 
-//        AppLogUtil.d(TAG, "mqtt发送json---------------->" + json);
         MqttMessage message = new MqttMessage(data);
         message.setQos(1);
         try {
@@ -225,7 +228,7 @@ public class MqttManager {
         }
     }
 
-    void close() {
+    public void close() {
         if (mqttClient == null) {
             return;
         }
@@ -274,8 +277,8 @@ public class MqttManager {
 
     }
 
-    public interface MyMqttCallback{
-        void messageArrived(String topic, String message);
+    public interface MyMqttCallback {
+        void messageArrived(String topic, byte[] data);
     }
 
     public void setMyMqttCallback(MyMqttCallback myMqttCallback) {
